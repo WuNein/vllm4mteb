@@ -41,8 +41,8 @@ TASK_LIST_CLUSTERING = [
 ]
 
 TASK_LIST_PAIR_CLASSIFICATION = [
-    "SprintDuplicateQuestions", #KeyError: 'Franklin U722 USB modem signal strength'
-    "TwitterSemEval2015", #KeyError: 'All the home alones watching 8 mile'
+    "SprintDuplicateQuestions",
+    "TwitterSemEval2015",
     "TwitterURLCorpus",
 ]
 

@@ -9,9 +9,9 @@ You need to change the model info in python code.
 
 Then
 
-python run_array_decoder.py
+python run_array_decoder_vllm.py
 
-I make two examples.
+I make two examples of not using vllm, and one with.
 
 ![Alt text](image.png)
 
