@@ -16,3 +16,9 @@ I make two examples of not using vllm, and one with.
 ![Alt text](image.png)
 
 The result is same.
+
+## Example
+
+1. git clone lora from https://huggingface.co/royokong/prompteol-opt-2.7b
+2. git clone opt2.7b
+3. python run_array_decoder_vllm.py --lora_weight prompteol-opt-2.7b
