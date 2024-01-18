@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO)
 
 import numpy as np
 from mteb import MTEB
-from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import torch
 from copy import deepcopy
 
@@ -83,17 +83,17 @@ TASK_LIST_RETRIEVAL = [
 ]
 
 TASK_LIST_STS = [
-    "BIOSSES",
+    # "BIOSSES",
     "SICK-R",
     "STS12",
     "STS13",
     "STS14",
     "STS15",
     "STS16",
-    "STS17",
-    "STS22", #p2p
+    # "STS17",
+    # "STS22", #p2p
     "STSBenchmark",
-    "SummEval",
+    # "SummEval",
 ]
 
 TASK_LIST = (
@@ -106,7 +106,13 @@ TASK_LIST = (
 )
 
 # from peft import PeftModel
-
+from qwen_generation_utils import (
+    HistoryType,
+    make_context,
+    decode_tokens,
+    get_stop_words_ids,
+    StopWordsLogitsProcessor,
+)
 
 class DecoderWrapper:
     def __init__(
@@ -118,26 +124,25 @@ class DecoderWrapper:
         bf16 = False,
     ):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.max_length = 1024
+        self.max_length = 512
         self.tokenizer = AutoTokenizer.from_pretrained(
             modelpath,
             model_max_length=self.max_length,
-            padding_side="left", #right in ft code
+            padding_side="right", #right in ft code
             use_fast=False,
             trust_remote_code=True,
         )
         self.tokenizer.pad_token_id = self.tokenizer.eod_id
+        
         # self.tokenizer.pad_token_id = (
         #     0  # unk. we want this to be different from the eos token
         # )
         # self.tokenizer.padding_side = "left"  # Allow batched inference
         self.model = AutoModelForCausalLM.from_pretrained(
             modelpath,
-            output_hidden_states=True,
-            trust_remote_code=True,
-            torch_dtype=torch.float16 if bf16 == False else torch.bfloat16,
-            device_map="auto",
+            device_map="auto", trust_remote_code=True, fp16=True
         )
+        self.model.generation_config = GenerationConfig.from_pretrained(modelpath, trust_remote_code=True)
         # self.model = PeftModel.from_pretrained(
         #     self.model,
         #     lora_weight,
@@ -174,47 +179,53 @@ class DecoderWrapper:
         max_length = self.max_length
         sentences = deepcopy(raw_sentences)
 
-        if (
-            # args.mask_embedding_sentence
-            # and
-            self.mask_embedding_sentence_template
-            is not None
-        ):
-            # *cls*_This_sentence_of_"*sent_0*"_means*mask*.*sep+*
-            template = self.mask_embedding_sentence_template
-            template = (
-                template.replace("_", " ").replace("*sep+*", "").replace("*cls*", "")
-            )
-
-            for i, s in enumerate(sentences):
-                if len(s) > 0 and s[-1] not in ".?\"'":
-                    s += "."
-                s = s.replace('"', "'")
-                if len(s) > 0 and "?" == s[-1]:
-                    s = s[:-1] + "."
-                sentences[i] = template.replace("*sent 0*", s).strip()
-
         all_embeddings = []
-        length_sorted_idx = np.argsort([len(sen) for sen in sentences])
-        sentences_sorted = [sentences[idx] for idx in length_sorted_idx]
+        # length_sorted_idx = np.argsort([len(sen) for sen in sentences])
+        # sentences_sorted = [sentences[idx] for idx in length_sorted_idx]
 
         for start_index in range(0, len(sentences), batch_size):
-            sentences_batch = sentences_sorted[start_index:start_index+batch_size]
-            batch = self.tokenizer.batch_encode_plus(
-                sentences_batch,
-                return_tensors="pt",
-                padding=True,
-                max_length=max_length,
-                truncation=max_length is not None,
-            )
-            batch = {k: v.to(self.device) for k,v in batch.items()}
+            sentences_batch = sentences[start_index:start_index+batch_size]
+
+            max_length = 0
+            input_ids = []
+            self.tokenizer.pad_token_id = self.tokenizer.eod_id
+            for j, sentence in enumerate(sentences_batch):
+                # query = self.tokenizer.from_list_format([
+                #     {'text': f"""高等学校或研究机关中指导他人学习、进修、或撰写学术论文的教师或科研人员。\n上面这句话用一个中文词来表达是：导师。\n"""},
+                #     {'text': f"""{sentence}\n上面这句话用一个中文词来表达是："""},
+                # ])
+                query = self.tokenizer.from_list_format([
+                    {'text': f"""This sentence : "of or relating to tutors or tutoring." means in one English word:Tutorial.\nThis sentence : "{sentence}" means in one English word:"""},
+                ])
+                raw_text, context_tokens = make_context(
+                    self.tokenizer,
+                    query,
+                    history=None,
+                    system="You are a helpful assistant.",
+                    max_window_size=self.model.generation_config.max_window_size,
+                    chat_format=self.model.generation_config.chat_format,
+                )
+                # print(raw_text)
+                # input_id = self.tokenizer(sentence).input_ids
+                input_ids.append(context_tokens)
+                max_length = max(max_length, len(context_tokens))
+            # max_length += 10
+            padding_lengths = []
+            for j in range(len(input_ids)):
+                padding_lengths.append(max_length - len(input_ids[j]))
+                input_ids[j] += [self.tokenizer.eod_id] * (max_length - len(input_ids[j]))
+            
+            input_ids = torch.tensor(input_ids, dtype=torch.int).to('cuda')
+            outputs = []
             with torch.no_grad():
+                attention_mask = input_ids.ne(self.tokenizer.eod_id)
                 hidden_states = self.model(
-                    output_hidden_states=True, return_dict=True, **batch
+                    input_ids= input_ids,attention_mask = attention_mask,output_hidden_states=True, return_dict=True
                 ).hidden_states
-                outputs = hidden_states[-1][:, -1, :]
-            all_embeddings.extend(outputs.float().cpu().numpy())
-        all_embeddings = [all_embeddings[idx] for idx in np.argsort(length_sorted_idx)]
+                last_true_indices = torch.max(attention_mask.int().cumsum(dim=1), dim=1).indices
+                outputs = [hidden_states[-1][i, index, :].float().cpu().numpy() for i, index in enumerate(last_true_indices)]
+
+            all_embeddings.extend(outputs)
         return all_embeddings
 
 
@@ -226,7 +237,7 @@ def parse_args():
     parser.add_argument("--lang", type=str, default="en")
     parser.add_argument("--taskname", type=str, default=None)
     parser.add_argument("--lora", type=str, default=None)
-    parser.add_argument("--batchsize", type=int, default=8)
+    parser.add_argument("--batchsize", type=int, default=4)
     args = parser.parse_args()
     return args
 
