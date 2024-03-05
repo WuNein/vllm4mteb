@@ -31,6 +31,13 @@ After 0.22, they change the api. 当初分析代码花了很久，没兴趣再�
 
 I was using vllm 0.21, when initially develop this project.
 
+## 针对最新版 Latest vllm
+
+![Alt text](image-1.png)
+感谢@guankaisi的提醒，vllm的函数改了。
+目前做了一个demo (vllm-new 文件)，新版的函数也可以用。晚些再改。
+
+
 ## 其他
 
 我颇为确定 https://arxiv.org/pdf/2401.00368.pdf intfloat/e5-mistral-7b-instruct 没有充分利用模型，我手头就有一个STS比他高的。
