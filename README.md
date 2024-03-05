@@ -27,7 +27,7 @@ The result is same.
 
 vllm <= 0.22
 
-After 0.22, they change the api. 当初分析代码花了很久，没兴趣再做一遍了。
+After 0.22, they change the api. 新版本代码已测试，等待修改
 
 I was using vllm 0.21, when initially develop this project.
 
