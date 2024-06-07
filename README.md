@@ -1,4 +1,27 @@
 # vllm4mteb
+
+## 新的说明
+
+> 本项目应该迎来大结局了！支持最新的vLLM！
+![alt text](image-2.png)
+
+vLLM算是正常支持Embedding了，只是支持的不太舒服。Pooling也只支持一种，这个建议MonkeyPatch来解决。
+
+最后的解决办法请见`vllm4emb.ipynb`，提供了一种不修改codebase的方法来解决，原理就是把我们的Embedding模型注册上去，其实就是导入几个文件，复制黏贴一下就行了。
+
+```
+from vllm import ModelRegistry
+ModelRegistry.register_model("MyLlamaEmbeddingModel", MyLlamaEmbeddingModel)
+```
+
+详细注释看ipynb，需要Patch `ModelRegistry.is_embedding_model` 这个方法，这个作者并没有考虑额外注册OOT的Embedding模型的需求。
+
+> https://github.com/vllm-project/vllm/blob/388596c91437a51d428a447594e9faec340c29b2/vllm/model_executor/layers/pooler.py#L44
+他这个写法应该是支持Qwen的tiktoken分词的，所以基本上兼容问题不大了。
+
+
+
+## 旧的说明
 vllm for embedding tasks
 
 https://github.com/kongds/scaling_sentemb
