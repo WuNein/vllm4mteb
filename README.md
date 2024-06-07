@@ -3,7 +3,7 @@
 ## 新的说明
 
 > 本项目应该迎来大结局了！支持最新的vLLM！
-![alt text](image-2.png)
+![alt text](assets/image-2.png)
 
 vLLM算是正常支持Embedding了，只是支持的不太舒服。Pooling也只支持一种，这个建议MonkeyPatch来解决。
 
@@ -36,7 +36,7 @@ python run_array_decoder_vllm.py
 
 I make two examples of not using vllm, and one with.
 
-![Alt text](image.png)
+![Alt text](assets/image.png)
 
 The result is same.
 
@@ -56,7 +56,7 @@ I was using vllm 0.21, when initially develop this project.
 
 ## 针对最新版 Latest vllm
 
-![Alt text](image-1.png)
+![Alt text](assets/image-1.png)
 感谢@guankaisi的提醒，vllm的函数改了。
 目前做了一个demo (vllm-new 文件)，新版的函数也可以用。晚些再改。
 
