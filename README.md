@@ -1,5 +1,24 @@
 # vllm4mteb
 
+## New Instructions
+
+> The project is nearing its conclusion! It now supports the latest vLLM!
+![alt text](assets/image-2.png)
+
+vLLM has basic support for Embedding, though it's not very convenient. Pooling only supports one method, which we suggest solving with a MonkeyPatch.
+
+For the final solution, refer to `vllm4emb.ipynb`, which provides a way to solve this without modifying the codebase. The principle is to register our Embedding model. Essentially, it's just importing a few files and copying and pasting some code.
+
+```python
+from vllm import ModelRegistry
+ModelRegistry.register_model("MyLlamaEmbeddingModel", MyLlamaEmbeddingModel)
+```
+
+See the detailed comments in the notebook. You need to patch the `ModelRegistry.is_embedding_model` method, as the author did not anticipate the need for registering out-of-the-box Embedding models.
+
+> https://github.com/vllm-project/vllm/blob/388596c91437a51d428a447594e9faec340c29b2/vllm/model_executor/layers/pooler.py#L44
+This implementation should support Qwen's tiktoken tokenizer, so compatibility issues are minimal.
+
 ## 新的说明
 
 > 本项目应该迎来大结局了！支持最新的vLLM！
