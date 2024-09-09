@@ -1,4 +1,6 @@
 # vllm4mteb
+> 支持了Qwen2
+
 ## Notice 可能要注意的问题
 ### Problem 1
 https://github.com/vllm-project/vllm/blob/main/vllm/model_executor/models/llama_embedding.py is not working with raw LLM!
@@ -86,6 +88,8 @@ ModelRegistry.register_model("MyLlamaEmbeddingModel", MyLlamaEmbeddingModel)
 
 > https://github.com/vllm-project/vllm/blob/388596c91437a51d428a447594e9faec340c29b2/vllm/model_executor/layers/pooler.py#L44
 他这个写法应该是支持Qwen的tiktoken分词的，所以基本上兼容问题不大了。
+
+Qwen2的版本也给了！
 
 ## 其他
 
