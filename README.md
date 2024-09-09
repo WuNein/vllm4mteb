@@ -1,4 +1,64 @@
 # vllm4mteb
+## Notice
+### Problem 1
+https://github.com/vllm-project/vllm/blob/main/vllm/model_executor/models/llama_embedding.py is not working with raw LLM!
+
+这个脚本在没有用Sentence bert训练过的模型上是用不了的，建议参考我这个项目的MTEB
+
+https://github.com/vllm-project/vllm/blob/4ef41b84766670c1bd8079f58d35bf32b5bcb3ab/vllm/model_executor/models/llama_embedding.py#L77 Problem is here
+
+问题出在加载权重上。
+
+### Problem 2 **Don't miss architecture change**
+```
+{
+  "_name_or_path": "princeton-nlp/Sheared-LLaMA-1.3B",
+  "architectures": [
+    "LlamaForCausalLM"
+  ],
+  "bos_token_id": 1,
+  "eos_token_id": 2,
+  "hidden_act": "silu",
+  "hidden_size": 2048,
+  "initializer_range": 0.02,
+  "intermediate_size": 5504,
+  "max_position_embeddings": 4096,
+  "model_type": "llama",
+  "num_attention_heads": 16,
+  "num_hidden_layers": 24,
+  "num_key_value_heads": 16,
+  "pad_token_id": 0,
+  "pretraining_tp": 1,
+  "rms_norm_eps": 1e-05,
+  "rope_scaling": null,
+  "tie_word_embeddings": false,
+  "torch_dtype": "float32",
+  "transformers_version": "4.28.1",
+  "use_cache": true,
+  "vocab_size": 32000
+}
+```
+Change / 修改
+```
+{
+  ...
+  "architectures": [
+    "MyLlamaEmbeddingModel"
+  ],
+  ...
+}
+```
+修改成和你自定义的Embedding Class一样的architectures，目的是让vLLM认为是你新实现的模型！
+
+```
+[rank0]: File "python3.11/site-packages/vllm/worker/embedding_model_runner.py", line 122, in execute_model
+[rank0]: self.model.pooler(hidden_states=hidden_states,
+[rank0]: ^^^^^^^^^^^^^^^^^
+[rank0]: File "python3.11/site-packages/torch/nn/modules/module.py", line 1729, in getattr
+[rank0]: raise AttributeError(f"'{type(self).name}' object has no attribute '{name}'")
+[rank0]: AttributeError: 'LlamaForCausalLM' object has no attribute 'pooler'
+```
+In case, this problem occur. 不然的话就出现这个问题！LlamaForCausalLM这个模型架构明显不对！
 
 ## New Instructions
 
